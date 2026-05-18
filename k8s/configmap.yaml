@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_HOST: postgresql
+  DB_PORT: "5432"
+  DB_NAME: gestion_presence
+  DB_USER: gestion_presence
+  DJANGO_SETTINGS_MODULE: config.settings
+  CSRF_TRUSTED_ORIGINS: https://gestionpresences.serveousercontent.com,http://localhost:8080
+  DEBUG: "False"

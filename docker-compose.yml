@@ -1,0 +1,54 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: gestion-rh-db
+    environment:
+      POSTGRES_DB: gestion_presence
+      POSTGRES_USER: gestion_presence
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U gestion_presence
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  web:
+    build: /Users/augustinpeyridieux/Desktop/projets/gestion-rh
+    container_name: gestion-rh-web
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      DB_NAME: gestion_presence
+      DB_USER: gestion_presence
+      DB_PASSWORD: changeme
+      DB_HOST: postgresql
+      DB_PORT: "5432"
+      DJANGO_SECRET_KEY: change-me-in-production
+      CSRF_TRUSTED_ORIGINS: http://localhost:8000,https://gestionpresences.serveousercontent.com
+      ADMIN_PASSWORD: 0UGtvTgZvSuQQ8ZZeWaF
+      DEBUG: "False"
+    volumes:
+      - media_data:/app/media
+    restart: unless-stopped
+
+  cluster-manager:
+    build: .
+    container_name: k3d-manager
+    profiles:
+      - k8s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/augustinpeyridieux/Desktop/projets/gestion-rh/k8s:/k8s
+    restart: unless-stopped
+
+volumes:
+  postgresql_data:
+  media_data:
