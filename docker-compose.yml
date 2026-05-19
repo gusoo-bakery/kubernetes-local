@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgresql_data:/var/lib/postgresql/data
+      - ./data/postgresql:/var/lib/postgresql/data
     healthcheck:
       test: pg_isready -U gestion_presence
       interval: 5s
@@ -44,11 +44,12 @@ services:
     container_name: k3d-manager
     profiles:
       - k8s
+    ports:
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/augustinpeyridieux/Desktop/projets/gestion-rh/k8s:/k8s
     restart: unless-stopped
 
 volumes:
-  postgresql_data:
   media_data:
