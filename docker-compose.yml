@@ -46,6 +46,7 @@ services:
       - k8s
     ports:
       - "8080:8080"
+      - "9443:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/augustinpeyridieux/Desktop/projets/gestion-rh/k8s:/k8s
