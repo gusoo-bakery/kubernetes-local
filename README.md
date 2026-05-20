@@ -26,13 +26,13 @@ docker compose up -d
 docker compose --profile k8s up -d --build
 ```
 
-→ App : [http://localhost:8080](http://localhost:8080)  
+→ App : [http://localhost:8080](http://localhost:8080)
 → Dashboard K8s : [https://localhost:9443](https://localhost:9443)
 
 ### Token du Dashboard
 
 ```bash
-docker exec k3d-manager kubectl -n kubernetes-dashboard create token admin-user
+docker exec k3d-manager cat /tmp/dashboard-token.txt
 ```
 
 Coller le token dans la page de connexion (choisir "Token").
@@ -41,7 +41,7 @@ Coller le token dans la page de connexion (choisir "Token").
 
 ```bash
 cd ~/Desktop/projets/gestion-rh
-bash scripts/up.sh
+bash scripts/up.sh k8s
 ```
 
 Build l'image Django, démarre les services, le cluster k3d, le Dashboard, et le tunnel HTTPS.
@@ -65,24 +65,23 @@ ssh -i ~/.ssh/serveo_key \
 
 ## Kubernetes (k3d)
 
-Le `cluster-manager` (profil `k8s`) crée un cluster k3d nommé `web-cluster` avec :
+Le `cluster-manager` (profil `k8s`) crée (ou détecte) un cluster k3d nommé `web-cluster` avec :
 
 - 1 serveur + 2 agents
-- Port `8080` → port-forward vers l'application
+- Port `8080` → port-forward vers l'application (LoadBalancer, avec sidecar nginx)
 - Port `9443` → port-forward vers le Dashboard K8s
-- Déploie automatiquement les manifests de `gestion-rh/k8s/`
-- Installe le Dashboard via Helm (kubernetes-dashboard 7.14.0)
+- Déploie automatiquement les manifests de `gestion-rh/k8s/` (monté dans `/k8s/`)
+- Installe le Dashboard via l'URL `recommended.yaml` (kubernetes-dashboard v2.7.0)
+- ServiceAccount `admin-user` créé, token sauvegardé dans `/tmp/dashboard-token.txt`
 
-### Dashboard Kubernetes
+Le `setup.sh` est idempotent : si le cluster k3d existe déjà, il saute la création et relance les port-forwards.
 
-Installé automatiquement par `setup.sh` via Helm avec :
+### Port-forwards
 
-- **nginx** désactivé (pas besoin de ingress)
-- **cert-manager** désactivé
-- **Kong** comme proxy API (auto-configuré)
-- Port-forward `9443` → `kubernetes-dashboard-kong-proxy:443`
-
-Accès : `https://localhost:9443` (certificat auto-signé → accepter le risque)
+| Port local | Cible k8s | Service |
+|-----------|-----------|---------|
+| 8080 | svc/gestion-rh:80 | App Django (via nginx) |
+| 9443 | svc/kubernetes-dashboard:443 | Dashboard K8s |
 
 ### Commandes k3d
 
@@ -98,6 +97,16 @@ docker compose --profile k8s logs -f cluster-manager
 
 # Simuler un crash (Kubernetes recrée le pod)
 docker exec k3d-manager kubectl delete pod -l app=gestion-rh --force
+
+# Obtenir le kubeconfig
+docker exec k3d-web-cluster-server-0 cat /etc/rancher/k3s/k3s.yaml > /tmp/kubeconfig
+
+# Importer une image dans k3d (sur chaque nœud)
+docker save gestion-rh:latest > /tmp/gestion-rh.tar
+for node in k3d-web-cluster-server-0 k3d-web-cluster-agent-0 k3d-web-cluster-agent-1; do
+  docker cp /tmp/gestion-rh.tar "$node:/tmp/"
+  docker exec "$node" ctr -n k8s.io images import /tmp/gestion-rh.tar
+done
 ```
 
 ## Persistance des données
@@ -114,12 +123,12 @@ rm -rf data/postgresql
 
 ```
 kubernetes-local/
-├── docker-compose.yml     # PostgreSQL + web + cluster-manager (port 9443)
-├── Dockerfile              # Image k3d + kubectl + helm
+├── docker-compose.yml     # PostgreSQL + web + cluster-manager
+├── Dockerfile              # Image k3d + kubectl + docker CLI (+ Helm retiré)
 ├── scripts/
-│   ├── setup.sh           # Entrypoint du cluster-manager
-│   └── start.sh           # Build + start + tunnel
-├── k8s/                   # Anciens manifests (non utilisés)
+│   ├── setup.sh           # Entrypoint du cluster-manager (idempotent)
+│   └── start.sh           # Build + start + tunnel (ancien)
+├── k8s/                   # Anciens manifests (non utilisés, les vrais sont dans gestion-rh/k8s/)
 └── data/postgresql/       # Données PostgreSQL (.gitignored)
 ```
 

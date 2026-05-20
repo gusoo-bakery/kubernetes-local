@@ -21,7 +21,7 @@ services:
     build: /Users/augustinpeyridieux/Desktop/projets/gestion-rh
     container_name: gestion-rh-web
     ports:
-      - "8000:8000"
+      - "8000:8001"
     depends_on:
       postgresql:
         condition: service_healthy
