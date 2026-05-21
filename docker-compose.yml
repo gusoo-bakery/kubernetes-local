@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: gestion_presence
       POSTGRES_USER: gestion_presence
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_ME_DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -28,12 +28,12 @@ services:
     environment:
       DB_NAME: gestion_presence
       DB_USER: gestion_presence
-      DB_PASSWORD: changeme
+      DB_PASSWORD: ${DB_PASSWORD:-CHANGE_ME_DB_PASSWORD}
       DB_HOST: postgresql
       DB_PORT: "5432"
-      DJANGO_SECRET_KEY: change-me-in-production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-CHANGE_ME_DJANGO_SECRET_KEY}
       CSRF_TRUSTED_ORIGINS: http://localhost:8000,https://gestionpresences.serveousercontent.com
-      ADMIN_PASSWORD: 0UGtvTgZvSuQQ8ZZeWaF
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-CHANGE_ME_ADMIN_PASSWORD}
       DEBUG: "False"
     volumes:
       - media_data:/app/media
@@ -46,7 +46,14 @@ services:
       - k8s
     ports:
       - "8080:8080"
+      - "9090:9090"
+      - "3000:3000"
       - "9443:9443"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:-CHANGE_ME_DB_PASSWORD}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-CHANGE_ME_DJANGO_SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-CHANGE_ME_ADMIN_PASSWORD}
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD:-CHANGE_ME_GRAFANA_PASSWORD}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /Users/augustinpeyridieux/Desktop/projets/gestion-rh/k8s:/k8s

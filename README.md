@@ -18,7 +18,7 @@ Environnement de développement local avec Docker Compose et k3d.
 docker compose up -d
 ```
 
-→ [http://localhost:8000](http://localhost:8000) — `admin` / `0UGtvTgZvSuQQ8ZZeWaF`
+→ [http://localhost:8000](http://localhost:8000) — `admin` / mot de passe défini dans `.env` (`ADMIN_PASSWORD`)
 
 ### Application + cluster Kubernetes
 
@@ -28,6 +28,8 @@ docker compose --profile k8s up -d --build
 
 → App : [http://localhost:8080](http://localhost:8080)
 → Dashboard K8s : [https://localhost:9443](https://localhost:9443)
+→ Prometheus : [http://localhost:9090](http://localhost:9090)
+→ Grafana : [http://localhost:3000](http://localhost:3000) (admin/admin)
 
 ### Token du Dashboard
 
@@ -69,6 +71,8 @@ Le `cluster-manager` (profil `k8s`) crée (ou détecte) un cluster k3d nommé `w
 
 - 1 serveur + 2 agents
 - Port `8080` → port-forward vers l'application (LoadBalancer, avec sidecar nginx)
+- Port `9090` → port-forward vers Prometheus
+- Port `3000` → port-forward vers Grafana (admin/admin)
 - Port `9443` → port-forward vers le Dashboard K8s
 - Déploie automatiquement les manifests de `gestion-rh/k8s/` (monté dans `/k8s/`)
 - Installe le Dashboard via l'URL `recommended.yaml` (kubernetes-dashboard v2.7.0)
@@ -76,11 +80,17 @@ Le `cluster-manager` (profil `k8s`) crée (ou détecte) un cluster k3d nommé `w
 
 Le `setup.sh` est idempotent : si le cluster k3d existe déjà, il saute la création et relance les port-forwards.
 
+Les port-forwards sont protégés par `pf_keepalive()` : si un processus `kubectl port-forward` meurt, il est relancé automatiquement (délai 2s). Un thread de monitoring vérifie les PIDs toutes les 10s.
+
+Le `kubeconfig` est récupéré via `k3d kubeconfig get` avec le serveur réécrit vers `k3d-web-cluster-serverlb:6443` (DNS interne Docker), ce qui évite les conflits de ports avec `k3d kubeconfig merge`.
+
 ### Port-forwards
 
 | Port local | Cible k8s | Service |
 |-----------|-----------|---------|
 | 8080 | svc/gestion-rh:80 | App Django (via nginx) |
+| 9090 | svc/prometheus:9090 | Prometheus |
+| 3000 | svc/grafana:3000 | Grafana (admin/admin) |
 | 9443 | svc/kubernetes-dashboard:443 | Dashboard K8s |
 
 ### Commandes k3d
@@ -124,11 +134,9 @@ rm -rf data/postgresql
 ```
 kubernetes-local/
 ├── docker-compose.yml     # PostgreSQL + web + cluster-manager
-├── Dockerfile              # Image k3d + kubectl + docker CLI (+ Helm retiré)
+├── Dockerfile              # Image k3d + kubectl + docker CLI
 ├── scripts/
-│   ├── setup.sh           # Entrypoint du cluster-manager (idempotent)
-│   └── start.sh           # Build + start + tunnel (ancien)
-├── k8s/                   # Anciens manifests (non utilisés, les vrais sont dans gestion-rh/k8s/)
+│   └── setup.sh           # Entrypoint du cluster-manager (idempotent)
 └── data/postgresql/       # Données PostgreSQL (.gitignored)
 ```
 
